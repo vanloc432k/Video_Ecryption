@@ -6,8 +6,8 @@ import numpy as np
 import struct ## new
 import zlib
 
-HOST='192.168.1.15'
-PORT=8485
+HOST = '127.0.0.1'
+PORT = 8000
 
 s=socket.socket(socket.AF_INET,socket.SOCK_STREAM)
 print('Socket created')

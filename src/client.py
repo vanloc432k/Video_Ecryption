@@ -1,22 +1,37 @@
-import socket
 import cv2
+import io
+import socket
+import struct
+import time
+import pickle
+import zlib
+import matplotlib.pyplot as plt
 
-# Như mình đã nói ở trên thì chúng ta không truyền tham số vào vẫn ok
-s = socket.socket()
-s.connect(("192.168.1.15", 4000))
-# s.connect(("100.72.89.226", 6666))
+client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+host_ip = '127.0.0.1' # Here Require CACHE Server IP
+port = 8000
+client_socket.connect((host_ip, port)) # a tuple
+data = b""
+print("CONNECTED TO SERVER!")
+payload_size = struct.calcsize(">L")
+while True:
+    while len (data) < payload_size:
+        packet = client_socket.recv(4*1024)
+        if not packet:
+            break
+        data += packet
+    packed_msg_size = data[:payload_size]
+    data = data[payload_size:]
+    msg_size = struct.unpack(">L", packed_msg_size)[0]
 
-# 1024 là số bytes mà client có thể nhận được trong 1 lần
-# Phần tin nhắn đầu tiên
-img = s.recv(1024)
+    while len(data) < msg_size:
+        data += client_socket.recv(4*1024)
+    frame_data = data[:msg_size]
+    data = data[msg_size:]
 
-# Phần tin nhắn tiếp theo
-while msg:
-  print("Recvied ", msg.decode())
-  msg = s.recv(1024)
-s.close()
-
-# bigdata: hadoop, spark
-# network, linux, ssh, bash script: linux
-# set up env, cài các thứ lib, dep
-# conflict version, thữ
+    frame = pickle.loads(frame_data)
+    cv2. imshow("Client", frame)
+    key = cv2. waitKey(1) & 0xFF
+    if key == ord('q') :
+        break
+client_socket.close()

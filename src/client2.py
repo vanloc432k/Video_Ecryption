@@ -8,10 +8,12 @@ import zlib
 import matplotlib.pyplot as plt
 
 client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-client_socket.connect(('192.168.1.15', 8485))
+client_socket.connect(('127.0.0.1', 8000))
+print("check")
 connection = client_socket.makefile('wb')
 
 cam = cv2.VideoCapture(0)
+print("work")
 
 cam.set(3, 320);
 cam.set(4, 240);
