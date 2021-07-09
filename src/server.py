@@ -17,8 +17,11 @@ print('Socket bind complete')
 server_socket.listen(10)
 print('Socket now listening')
 
+test_vid = cv2.VideoCapture('./video/about.mp4')
+frame_counter = 0
+
 global frame
-frame = None
+frame = [None, None]
 
 def start_video_stream () :
     global frame
@@ -43,10 +46,10 @@ def start_video_stream () :
             data += client_socket.recv(4*1024)
         frame_data = data[:msg_size]
         data = data[msg_size:]
-        frame = pickle.loads(frame_data)
-        cv2.imshow("Server Serving", frame)
+        frame[0] = pickle.loads(frame_data)
+        cv2.imshow("Server Serving", frame[0])
         key = cv2.waitKey(1) & 0xFF
-        print(data)
+        # print(data)
         if key == ord('q'):
             break
     client_socket.close()
@@ -60,7 +63,7 @@ def serve_client (addr, client_socket):
         print('CLIENT {} CONNECTED! '.format(addr))
         if client_socket:
             while True:
-                a = pickle.dumps (frame)
+                a = pickle.dumps (frame[0])
                 message = struct.pack(">L", len(a)) + a
                 client_socket.sendall(message)
 
@@ -75,22 +78,3 @@ while True:
     thread.start()
 
     print("TOTAL CLIENTS:", threading.activeCount() - 1)
-# while True:
-#     while len(data) < payload_size:
-#         print("Recv: {}".format(len(data)))
-#         data += conn.recv(4096)
-#
-#     print("Done Recv: {}".format(len(data)))
-#     packed_msg_size = data[:payload_size]
-#     data = data[payload_size:]
-#     msg_size = struct.unpack(">L", packed_msg_size)[0]
-#     print("msg_size: {}".format(msg_size))
-#     while len(data) < msg_size:
-#         data += conn.recv(4096)
-#     frame_data = data[:msg_size]
-#     data = data[msg_size:]
-#
-#     frame=pickle.loads(frame_data, fix_imports=True, encoding="bytes")
-#     frame = cv2.imdecode(frame, cv2.IMREAD_COLOR)
-#     cv2.imshow('Server',frame)
-#     cv2.waitKey(1)
