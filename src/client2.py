@@ -11,7 +11,7 @@ client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 client_socket.connect(('192.168.1.15', 8485))
 connection = client_socket.makefile('wb')
 
-cam = cv2.VideoCapture(0)
+cam = cv2.VideoCapture('sendit.webm')
 
 cam.set(3, 320);
 cam.set(4, 240);
