@@ -21,7 +21,7 @@ test_vid = cv2.VideoCapture('./video/about.mp4')
 frame_counter = 0
 
 global frame
-frame = [None, None]
+frame = None
 
 def start_video_stream () :
     global frame
@@ -46,8 +46,8 @@ def start_video_stream () :
             data += client_socket.recv(4*1024)
         frame_data = data[:msg_size]
         data = data[msg_size:]
-        frame[0] = pickle.loads(frame_data)
-        cv2.imshow("Server Serving", frame[0])
+        frame = pickle.loads(frame_data)
+        cv2.imshow("Server Serving", frame)
         key = cv2.waitKey(1) & 0xFF
         # print(data)
         if key == ord('q'):
@@ -63,7 +63,7 @@ def serve_client (addr, client_socket):
         print('CLIENT {} CONNECTED! '.format(addr))
         if client_socket:
             while True:
-                a = pickle.dumps (frame[0])
+                a = pickle.dumps (frame)
                 message = struct.pack(">L", len(a)) + a
                 client_socket.sendall(message)
 
@@ -73,7 +73,7 @@ def serve_client (addr, client_socket):
 
 while True:
     client_socket, addr = server_socket.accept()
-    print(addr)
+    print(client_socket.recv(1024))
     thread = threading.Thread(target=serve_client, args=(addr, client_socket))
     thread.start()
 

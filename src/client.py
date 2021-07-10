@@ -11,6 +11,7 @@ client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 host_ip = '127.0.0.1' # Here Require CACHE Server IP
 port = 8000
 client_socket.connect((host_ip, port)) # a tuple
+client_socket.send('Client'.encode('utf-8'))
 data = b""
 print("CONNECTED TO SERVER!")
 payload_size = struct.calcsize(">L")

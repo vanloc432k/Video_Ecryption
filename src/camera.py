@@ -11,15 +11,19 @@ socket_address = (host_ip, port)
 server_socket.bind(socket_address)
 server_socket.listen()
 print("Listening at", socket_address)
+im1 =[]
+im2=[]
+combine = cv2.hconcat([im1, im2])
 
 def start_video_stream():
     client_socket, addr = server_socket.accept()
 
-    camera = True
+    camera = False
     if camera == True:
         vid = cv2.VideoCapture(0)
     else:
-        vid = cv2.VideoCapture('./video/about.mp4')
+        vid = cv2.VideoCapture('video/about.mp4')
+
     vid.set(3, 320)
     vid.set(4, 240)
 
@@ -30,7 +34,7 @@ def start_video_stream():
         if client_socket:
             while vid.isOpened():
                 img, frame = vid.read()
-
+                # frame = cv2.resize(320, 240)
                 cv2.imshow('Camera Server', frame)
                 key = cv2.waitKey(1) & 0xFF
 
