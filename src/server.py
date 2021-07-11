@@ -12,29 +12,21 @@ PORT = 8000
 server_socket = socket.socket(socket.AF_INET,socket.SOCK_STREAM)
 print('Socket created')
 
-server_socket.bind((HOST,PORT))
+server_socket.bind((HOST, PORT))
 print('Socket bind complete')
-server_socket.listen(10)
+server_socket.listen()
 print('Socket now listening')
 
-test_vid = cv2.VideoCapture('./video/about.mp4')
-frame_counter = 0
-
 global frame
-frame = None
+frame = {}
 
-def start_video_stream () :
+def receive_camera(addr, client_socket, id):
     global frame
-    client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    host_ip = '127.0.0.1' # Camera IP
-    port = 7000
-    client_socket.connect((host_ip, port))
     data = b""
     payload_size = struct.calcsize(">L")
-
-    while True :
+    while True:
         while len(data) < payload_size:
-            packet = client_socket.recv(4*1024)
+            packet = client_socket.recv(4 * 1024)
             if not packet:
                 break
             data += packet
@@ -43,38 +35,50 @@ def start_video_stream () :
         msg_size = struct.unpack(">L", packed_msg_size)[0]
 
         while len(data) < msg_size:
-            data += client_socket.recv(4*1024)
+            data += client_socket.recv(4 * 1024)
         frame_data = data[:msg_size]
         data = data[msg_size:]
-        frame = pickle.loads(frame_data)
-        cv2.imshow("Server Serving", frame)
+
+        frame[id] = pickle.loads(frame_data)
+        window_name = 'Camera ' + id
+        cv2.imshow(window_name, frame[id])
         key = cv2.waitKey(1) & 0xFF
-        # print(data)
         if key == ord('q'):
             break
+    frame.pop(id)
     client_socket.close()
 
-thread = threading.Thread(target=start_video_stream, args=())
-thread.start()
-
-def serve_client (addr, client_socket):
+def serve_client (addr, client_socket, id):
     global frame
     try:
         print('CLIENT {} CONNECTED! '.format(addr))
         if client_socket:
             while True:
-                a = pickle.dumps (frame)
+                a = pickle.dumps(frame[id])
                 message = struct.pack(">L", len(a)) + a
                 client_socket.sendall(message)
 
     except Exception as e:
-        print (f"CLINET {addr} DISCONNECTED")
+        print (f"CLIENT {addr} DISCONNECTED")
         pass
+
+def system_information():
+    print(frame)
+    pass
 
 while True:
     client_socket, addr = server_socket.accept()
-    print(client_socket.recv(1024))
-    thread = threading.Thread(target=serve_client, args=(addr, client_socket))
-    thread.start()
+    identity = client_socket.recv(1024).decode('utf-8').split('-')
+    print(identity)
+    if identity[0] == 'CAMERA':
+        print('Camera', addr)
+        frame[identity[1]] = None
+        thread = threading.Thread(target=receive_camera, args=(addr, client_socket, identity[1]))
+        thread.start()
+    elif identity[0] == 'CLIENT':
+        print('Client', addr)
+        thread = threading.Thread(target=serve_client, args=(addr, client_socket, identity[1]))
+        thread.start()
 
-    print("TOTAL CLIENTS:", threading.activeCount() - 1)
+    print("TOTAL CONNECTIONS:", threading.activeCount())
+
