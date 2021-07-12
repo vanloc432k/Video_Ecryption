@@ -7,6 +7,8 @@ import sys
 REQUEST_DEVICE_NAME = sys.argv[1]
 CLIENT_NAME = sys.argv[2]
 
+active_socket = {}
+
 client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 host_ip = '127.0.0.1' # Server IP
 port = 8000
@@ -66,4 +68,15 @@ while True:
     # if key == 27:
     #     break
 client_socket.close()
+
+
+while True:
+    command = input('Enter command: ').strip().split(' ')
+
+    if command[0] == 'exit':
+        print('Exiting program ...!')
+        for value in active_socket.values():
+            value.close()
+
+    if command[0] == 'connect':
 

@@ -26,7 +26,8 @@ while vid.isOpened():
     try:
         if client_socket:
             img, frame = vid.read()
-            cv2.imshow('Camera Streaming', frame)
+            window_name = 'Camera ' + DEVICE_NAME + ' Streaming'
+            cv2.imshow(window_name, frame)
             key = cv2.waitKey(1)
 
             a = pickle.dumps(frame, 0)
