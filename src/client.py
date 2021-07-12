@@ -3,67 +3,122 @@ import socket
 import struct
 import pickle
 import sys
+import threading
 
-REQUEST_DEVICE_NAME = sys.argv[1]
-CLIENT_NAME = sys.argv[2]
+CLIENT_NAME = sys.argv[1]
 
-client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-host_ip = '127.0.0.1' # Server IP
-port = 8000
-client_socket.connect((host_ip, port))
-print(client_socket)
-request = 'CLIENT-' + REQUEST_DEVICE_NAME
-client_socket.send(request.encode('utf-8'))
-data = b""
-print("CONNECTED TO SERVER!")
-payload_size = struct.calcsize(">L")
+global active_socket
+active_socket = {}
 
-def receive_camera():
-    while True:
-        while len(data) < payload_size:
-            packet = client_socket.recv(4 * 1024)
-            if not packet:
+def get_system_info(info_socket):
+    global active_socket
+    try:
+        if info_socket:
+            print('Device connected to server!')
+            data = b""
+            payload_size = struct.calcsize(">L")
+            while True:
+                while len(data) < payload_size:
+                    packet = info_socket.recv(4 * 1024)
+                    if not packet:
+                        break
+                    data += packet
+                packed_msg_size = data[:payload_size]
+                data = data[payload_size:]
+                msg_size = struct.unpack(">L", packed_msg_size)[0]
+
+                while len(data) < msg_size:
+                    data += info_socket.recv(4 * 1024)
+                system_info = data[:msg_size]
+                data = data[msg_size:]
+
+    except Exception as e:
+        print(e)
+        info_socket.close()
+        active_socket.pop('main')
+
+def connect_to_server():
+    global active_socket
+    main_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    host_ip = '127.0.0.1'  # Server IP
+    port = 8000
+    try:
+        main_socket.connect((host_ip, port))
+        identity = 'CLIENT-' + CLIENT_NAME
+        main_socket.send(identity.encode('utf-8'))
+        new_thread = threading.Thread(target=get_system_info, args=(main_socket,), daemon=True)
+        new_thread.start()
+        active_socket['main'] = main_socket
+    except Exception as e:
+        print("Can't connect to server :(")
+        print(e)
+
+def receive_camera(camera_socket, camera_name):
+    global active_socket
+    try:
+        print('Received data from camera ' + camera_name + '!')
+        data = b""
+        payload_size = struct.calcsize(">L")
+        while True:
+            while len(data) < payload_size:
+                packet = camera_socket.recv(4 * 1024)
+                if not packet:
+                    break
+                data += packet
+            packed_msg_size = data[:payload_size]
+            data = data[payload_size:]
+            msg_size = struct.unpack(">L", packed_msg_size)[0]
+
+            while len(data) < msg_size:
+                data += camera_socket.recv(4 * 1024)
+            frame_data = data[:msg_size]
+            data = data[msg_size:]
+
+            frame = pickle.loads(frame_data)
+            window_name = CLIENT_NAME + ' ' + camera_name
+            cv2.imshow(window_name, frame)
+            key = cv2.waitKey(1) & 0xFF
+            if key == 27:
                 break
-            data += packet
-        packed_msg_size = data[:payload_size]
-        data = data[payload_size:]
-        msg_size = struct.unpack(">L", packed_msg_size)[0]
 
-        while len(data) < msg_size:
-            data += client_socket.recv(4 * 1024)
-        frame_data = data[:msg_size]
-        data = data[msg_size:]
+    except Exception as e:
+        active_socket.pop(camera_name)
+        camera_socket.close()
+        print(e)
 
-        frame = pickle.loads(frame_data)
-        print(frame_data.decode('utf-8').split('-'))
-        window_name = "Client " + CLIENT_NAME
-        cv2.imshow(window_name, frame)
-        key = cv2.waitKey(1) & 0xFF
-        if key == 27:
-            break
-    pass
+    active_socket.pop(camera_name)
+    camera_socket.close()
+
+def request_camera(camera_name):
+    global active_socket
+    new_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    host_ip = '127.0.0.1'
+    port = 8000
+    try:
+        new_socket.connect((host_ip, port))
+        identity = 'CLIENT-' + CLIENT_NAME + '-' + camera_name
+        new_socket.send(identity.encode('utf-8'))
+        new_thread = threading.Thread(target=receive_camera, args=(new_socket, camera_name), daemon=True)
+        new_thread.start()
+        active_socket[camera_name] = new_socket
+
+    except Exception as e:
+        print("Can't get camera data :(")
+        print(e)
 
 while True:
-    while len(data) < payload_size:
-        packet = client_socket.recv(4*1024)
-        if not packet:
-            break
-        data += packet
-    packed_msg_size = data[:payload_size]
-    data = data[payload_size:]
-    msg_size = struct.unpack(">L", packed_msg_size)[0]
+    command = input('Enter command: ').strip().split(' ')
 
-    while len(data) < msg_size:
-        data += client_socket.recv(4*1024)
-    sys_data = data[:msg_size]
-    data = data[msg_size:]
+    if command[0] == 'exit':
+        print('Exiting program ...!')
+        for value in active_socket.values():
+            value.close()
+        break
 
-    sys_info = pickle.loads(sys_data)
-    print(sys_info)
-    # window_name = "Client " + CLIENT_NAME
-    # cv2. imshow(window_name, frame)
-    # key = cv2. waitKey(1) & 0xFF
-    # if key == 27:
-    #     break
-client_socket.close()
+    if command[0] == 'connect':
+        connect_to_server()
+
+    if command[0] == 'start':
+        if not command[1] in active_socket:
+            request_camera(command[1])
 
