@@ -4,6 +4,7 @@ import cv2
 import pickle
 import struct
 import threading
+
 # import imutils
 
 MAX_CONNECTIONS = 20
@@ -11,7 +12,7 @@ MAX_CONNECTIONS = 20
 HOST = '127.0.0.1'
 PORT = 8000
 
-server_socket = socket.socket(socket.AF_INET,socket.SOCK_STREAM)
+server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 print('Socket created')
 
 server_socket.bind((HOST, PORT))
@@ -25,8 +26,11 @@ frame = {}
 global active_clients
 active_clients = []
 
+
 def get_system_information():
-    return list(frame.keys())
+    camera_list = list(frame.keys())
+    camera_list.append(len(camera_list))
+    return camera_list
 
 
 def receive_camera(addr, client_socket, id):
@@ -59,11 +63,13 @@ def receive_camera(addr, client_socket, id):
                     break
 
     except Exception as e:
+        print('Exception:', str(e))
         print(f"CAMERA {addr} DISCONNECTED")
         frame.pop(id)
         client_socket.close()
 
-def serve_client (addr, client_socket, id):
+
+def serve_client(addr, client_socket, id):
     global active_clients
     try:
         print('CLIENT {} CONNECTED! '.format(addr))
@@ -76,24 +82,30 @@ def serve_client (addr, client_socket, id):
                 client_socket.send(message)
 
     except Exception as e:
-        print(e)
-        print (f"CLIENT {addr} DISCONNECTED")
-        active_clients.pop(id)
-        pass
+        print('Exception:', str(e))
+        print(f"CLIENT {addr} DISCONNECTED")
+        active_clients.remove(id)
+        client_socket.close()
+
 
 def stream_to_client(addr, client_socket, id):
     global frame
     try:
-        print(f'CLIENT {addr} STREAMING CAMERA {id}! ')
+        print(f'CLIENT {addr} STREAMING CAMERA {id}!')
+        print('Socket status:', client_socket)
         if client_socket:
+            print(frame[id])
             while True:
                 a = pickle.dumps(frame[id])
                 message = struct.pack(">L", len(a)) + a
                 client_socket.sendall(message)
 
     except Exception as e:
+        print('Exception:', str(e))
         print(f"CLIENT {addr} STOP STREAMING CAMERA {id}")
+        client_socket.close()
         pass
+
 
 while True:
     print("TOTAL CONNECTIONS:", threading.activeCount() - 1)
@@ -119,4 +131,3 @@ while True:
             active_clients.append(identity[1])
             thread = threading.Thread(target=serve_client, args=(addr, client_socket, identity[1]))
             thread.start()
-

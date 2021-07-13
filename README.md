@@ -11,4 +11,6 @@ Step 3: python client.py <client_name>
 Step 4: enter command in client cmd:
 	'connect' : establish connect to server
 	'start <camera_name>': get data from camera
-	'exit': exit client program 
+	'close' : close all connection to server
+	'exit': exit client program
+	# all connections must be close before exit to prevent error at server
