@@ -1,26 +1,3 @@
-import cv2
-import socket
-import struct
-import pickle
-import sys
-
-DEVICE_NAME = sys.argv[1]
-
-client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-HOST_IP = '127.0.0.1'
-PORT = 8000
-client_socket.connect((HOST_IP, PORT))
-identity = 'CAMERA-' + DEVICE_NAME
-client_socket.send(identity.encode('utf-8'))
-# print("CAMERA CONNECTED TO SERVER!")
-
-camera = sys.argv[2]
-if camera == '0':
-    vid = cv2.VideoCapture(0)
-elif camera == '1':
-    vid = cv2.VideoCapture('video/about.mp4')
-img_counter = 0
-
 import os
 import random
 
@@ -80,46 +57,23 @@ def decrypt(key, associated_data, iv, ciphertext, tag):
     # If the tag does not match an InvalidTag exception will be raised.
     return decryptor.update(ciphertext) + decryptor.finalize()
 
+
 key = gen()
+message = b'heloooooo'
 print(key)
-mess_key = struct.pack(">L", len(key)) + key
-client_socket.sendall(mess_key)
-while vid.isOpened():
-    try:
-        if client_socket:
-            img, frame = vid.read()
-            frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-            stop_key = cv2.waitKey(1)
-            a = pickle.dumps(frame, 0)
-            mess_video = struct.pack(">L", len(a)) + a 
-            
-            iv, ciphertext, tag = encrypt(
-                                            key,
-                                            mess_video,    
-                                            b"authenticated but not encrypted payload"
-                                        )
-            mess_iv =  struct.pack(">L", len(iv)) + iv 
-            mess_tag = struct.pack(">L", len(tag)) + tag
-            print(iv)
-            print(tag)
-            client_socket.sendall(mess_iv)
-            client_socket.sendall(mess_tag)
-            client_socket.sendall(mess_video)
+print(len(key))
+iv, ciphertext, tag = encrypt(
+    key,
+message,    b"authenticated but not encrypted payload"
+)
+print(iv)
+print(tag)
+print(ciphertext)
 
-
-            #cv2.imshow('Camera Streaming', frame)
-
-            img_counter += 1
-            #print("{}: {}".format(img_counter, len(message)))
-            #print(message)
-
-    except Exception as e:
-        pass
-
-    stop_key = cv2. waitKey(1) & 0xFF
-    if stop_key == 27:
-        break
-
-client_socket.close()
-vid.release()
-cv2.destroyAllWindows()
+print(decrypt(
+    key,
+    b"authenticated but not encrypted payload",
+    iv,
+    ciphertext,
+    tag
+))

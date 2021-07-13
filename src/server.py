@@ -1,5 +1,7 @@
+from random import triangular
 import socket
 import sys
+from typing_extensions import IntVar
 import cv2
 import pickle
 import struct
@@ -18,52 +20,132 @@ server_socket.listen()
 print('Socket now listening')
 
 global frame
-frame = {}
-
+global data_key
+global data_iv
+global data_tag
+global data_video
+frame_video = {}
+frame_tag = {}
+frame_key = {}
+frame_iv = {}
+list_accept_ip = []
 def receive_camera(addr, client_socket, id):
     global frame
-    data = b""
-    payload_size = struct.calcsize(">L")
+    data_video = b""
+    global key 
+    data_key = b""
+    global tag 
+    data_tag = b""
+    global iv 
+    data_iv = b""
+    payload_size_key = struct.calcsize(">L")
+    payload_size_video = struct.calcsize(">L")
+    payload_size_tag = struct.calcsize(">L")
+    payload_size_iv = struct.calcsize(">L")
+
+    while len(data_key) < payload_size_key:
+        packet = client_socket.recv(4 * 1024)
+        if not packet:
+            break
+        data_key += packet
+    packed_msg_size = data_key[:payload_size_key]
+    data_key = data_key[payload_size_key:]
+    msg_size = struct.unpack(">L", packed_msg_size)[0]
+
+    while len(data_key) < msg_size:
+        data_key += client_socket.recv(4 * 1024)
+    frame_data_key = data_key[:msg_size]
+    data_key = data_key[msg_size:]
+    frame_key[id] = frame_data_key
+
+
     while True:
-        while len(data) < payload_size:
+        # iv
+        while len(data_iv) < payload_size_iv:
             packet = client_socket.recv(4 * 1024)
             if not packet:
                 break
-            data += packet
-        packed_msg_size = data[:payload_size]
-        data = data[payload_size:]
+            data_iv += packet
+        packed_msg_size = data_iv[:payload_size_iv]
+        data_iv = data_iv[payload_size_iv:]
         msg_size = struct.unpack(">L", packed_msg_size)[0]
 
-        while len(data) < msg_size:
-            data += client_socket.recv(4 * 1024)
-        frame_data = data[:msg_size]
-        data = data[msg_size:]
+        while len(data_iv) < msg_size:
+            data_iv += client_socket.recv(4 * 1024)
+        frame_data_iv = data_iv[:msg_size]
+        data_iv = data_iv[msg_size:]
+        frame_iv[id] = frame_data_iv
+        
+        #tag
+        while len(data_tag) < payload_size_tag:
+            packet = client_socket.recv(4 * 1024)
+            if not packet:
+                break
+            data_tag += packet
+        packed_msg_size = data_tag[:payload_size_tag]
+        data_tag = data_tag[payload_size_tag:]
+        msg_size = struct.unpack(">L", packed_msg_size)[0]
+        while len(data_tag) < msg_size:
+            data_tag += client_socket.recv(4 * 1024)
+        frame_data_tag = data_tag[:msg_size]
+        data_tag = data_tag[msg_size:]
+        frame_tag[id] = frame_data_tag
+        
+        #frame
+        while len(data_video) < payload_size_video:
+            packet = client_socket.recv(4 * 1024)
+            if not packet:
+                break
+            data_video += packet
+        packed_msg_size = data_video[:payload_size_video]
+        data_video = data_video[payload_size_video:]
+        msg_size = struct.unpack(">L", packed_msg_size)[0]
+        while len(data_video) < msg_size:
+            data_video += client_socket.recv(4 * 1024)
+        frame_data_video = data_video[:msg_size]
+        data_video = data_video[msg_size:]
+        frame_video[id] = frame_data_video
 
-        frame[id] = pickle.loads(frame_data)
-        window_name = 'Camera ' + id
-        cv2.imshow(window_name, frame[id])
-        key = cv2.waitKey(1) & 0xFF
-        if key == ord('q'):
+
+
+        stop_key = cv2.waitKey(1) & 0xFF
+        if stop_key == ord('q'):
             break
-    frame.pop(id)
+    frame_video.pop(id)
     client_socket.close()
 
 def serve_client (addr, client_socket, id):
-    global frame
+    global frame_video
+    global frame_key
+    global frame_iv
+    global frame_tag
     try:
         print('CLIENT {} CONNECTED! '.format(addr))
         if client_socket:
+            a = frame_key[id]
+            mess_key = struct.pack(">L", len(a)) + a
+            client_socket.sendall(mess_key)
+
             while True:
-                a = pickle.dumps(frame[id])
-                message = struct.pack(">L", len(a)) + a
-                client_socket.sendall(message)
+                a = frame_iv[id]
+                mess_iv = struct.pack(">L", len(a)) + a
+                client_socket.sendall(mess_iv)
+
+                a = frame_tag[id]
+                mess_tag = struct.pack(">L", len(a)) + a
+                client_socket.sendall(mess_tag)
+                
+
+                a = frame_video[id]
+                mess_video = struct.pack(">L", len(a)) + a
+                client_socket.sendall(mess_video)
 
     except Exception as e:
         print (f"CLIENT {addr} DISCONNECTED")
         pass
 
 def system_information():
-    print(frame)
+    print(frame_video)
     pass
 
 while True:
@@ -72,7 +154,9 @@ while True:
     print(identity)
     if identity[0] == 'CAMERA':
         print('Camera', addr)
-        frame[identity[1]] = None
+        frame_iv[identity[1]] = None
+        frame_tag[identity[1]] = None
+        frame_video[identity[1]] = None
         thread = threading.Thread(target=receive_camera, args=(addr, client_socket, identity[1]))
         thread.start()
     elif identity[0] == 'CLIENT':
