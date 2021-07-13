@@ -38,10 +38,11 @@ def get_system_info(info_socket):
                 for i in range(0, system_info[-1]):
                     cv2.putText(img, system_info[i], (20, (i + 1) * 25), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0), 2,
                                 cv2.LINE_AA)
-                window_name = CLIENT_NAME + 'System Information'
+                window_name = CLIENT_NAME + ' Server Information'
                 cv2.imshow(window_name, img)
                 key = cv2.waitKey(1) & 0xFF
                 if key == 27:
+                    cv2.destroyWindow(window_name)
                     break
 
 
@@ -94,6 +95,7 @@ def receive_camera(camera_socket, camera_name):
             cv2.imshow(window_name, frame)
             key = cv2.waitKey(1) & 0xFF
             if key == 27:
+                cv2.destroyWindow(window_name)
                 break
 
     except Exception as e:

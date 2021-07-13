@@ -9,7 +9,7 @@ import threading
 
 MAX_CONNECTIONS = 20
 
-HOST = '127.0.0.1'
+HOST = ''
 PORT = 8000
 
 server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
