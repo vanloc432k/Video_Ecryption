@@ -92,9 +92,7 @@ def stream_to_client(addr, client_socket, id):
     global frame
     try:
         print(f'CLIENT {addr} STREAMING CAMERA {id}!')
-        print('Socket status:', client_socket)
         if client_socket:
-            print(frame[id])
             while True:
                 a = pickle.dumps(frame[id])
                 message = struct.pack(">L", len(a)) + a

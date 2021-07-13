@@ -14,6 +14,7 @@ active_socket = {}
 
 def get_system_info(info_socket):
     global active_socket
+    window_name = CLIENT_NAME + ' Server Information'
     try:
         if info_socket:
             print('Device connected to server!')
@@ -38,7 +39,6 @@ def get_system_info(info_socket):
                 for i in range(0, system_info[-1]):
                     cv2.putText(img, system_info[i], (20, (i + 1) * 25), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0), 2,
                                 cv2.LINE_AA)
-                window_name = CLIENT_NAME + ' Server Information'
                 cv2.imshow(window_name, img)
                 key = cv2.waitKey(1) & 0xFF
                 if key == 27:
@@ -50,6 +50,7 @@ def get_system_info(info_socket):
         print('Exception:', str(e))
         info_socket.close()
         active_socket.pop('main')
+        cv2.destroyWindow(window_name)
 
 
 def connect_to_server():
@@ -71,6 +72,8 @@ def connect_to_server():
 
 def receive_camera(camera_socket, camera_name):
     global active_socket
+    window_name = CLIENT_NAME + ' ' + camera_name
+
     try:
         print('Received data from camera ' + camera_name + '!')
         data = b""
@@ -91,7 +94,6 @@ def receive_camera(camera_socket, camera_name):
             data = data[msg_size:]
 
             frame = pickle.loads(frame_data)
-            window_name = CLIENT_NAME + ' ' + camera_name
             cv2.imshow(window_name, frame)
             key = cv2.waitKey(1) & 0xFF
             if key == 27:
@@ -102,6 +104,7 @@ def receive_camera(camera_socket, camera_name):
         print('Exception:', str(e))
         active_socket.pop(camera_name)
         camera_socket.close()
+        cv2.destroyWindow(window_name)
 
     active_socket.pop(camera_name)
     camera_socket.close()
@@ -143,7 +146,14 @@ while True:
     if command[0] == 'start':
         if not command[1] in active_socket:
             request_camera(command[1])
-        continue
+        else:
+            print('Camera is streaming already!')
+
+    if command[0] == 'stop':
+        if command[1] in active_socket:
+            active_socket[command[1]].close()
+        else:
+            print("Camera isn't connected!")
 
     if command[0] == 'exit':
         print('Exiting program ...!')
