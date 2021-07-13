@@ -4,8 +4,7 @@ import cv2
 import pickle
 import struct
 import threading
-
-# import imutils
+import numpy as np
 
 MAX_CONNECTIONS = 20
 
@@ -80,6 +79,7 @@ def serve_client(addr, client_socket, id):
                 a = pickle.dumps(sys_info)
                 message = struct.pack(">L", len(a)) + a
                 client_socket.send(message)
+                cv2.waitKey(1)
 
     except Exception as e:
         print('Exception:', str(e))
