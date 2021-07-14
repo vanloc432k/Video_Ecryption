@@ -59,6 +59,7 @@ def decrypt(key, associated_data, iv, ciphertext, tag):
 
 
 key = gen()
+print(len(key))
 message = b'heloooooo'
 print(key)
 print(len(key))
@@ -66,7 +67,9 @@ iv, ciphertext, tag = encrypt(
     key,
 message,    b"authenticated but not encrypted payload"
 )
+print(len(iv)) #12
 print(iv)
+print(len(tag)) # 16
 print(tag)
 print(ciphertext)
 

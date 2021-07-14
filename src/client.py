@@ -48,7 +48,7 @@ payload_size_key = struct.calcsize(">L")
 payload_size_iv = struct.calcsize(">L")
 
 while len(data_key) < payload_size_key:
-    packet = client_socket.recv(4*1024)
+    packet = client_socket.recv(32)
     if not packet:
         break
     data_key += packet
@@ -57,46 +57,13 @@ data_key = data_key[payload_size_key:]
 msg_size = struct.unpack(">L", packed_msg_size)[0]
     
 while len(data_key) < msg_size:
-    data_key += client_socket.recv(4*1024)
+    data_key += client_socket.recv(32)
     #print(data_key)
     
 frame_data_key = data_key[:msg_size]
 data_key = data_key[msg_size:]
 print(frame_data_key)
 while True:
-    # iv
-    while len(data_iv) < payload_size_iv:
-        packet = client_socket.recv(4*1024)
-        if not packet:
-            break
-        data_iv += packet
-    packed_msg_size = data_iv[:payload_size_iv]
-    data_iv = data_iv[payload_size_iv:]
-    msg_size = struct.unpack(">L", packed_msg_size)[0]
-    
-    while len(data_iv) < msg_size:
-        data_iv += client_socket.recv(4*1024)
-    #print(data_iv)
-    
-    frame_data_iv = data_iv[:msg_size]
-    data_iv = data_iv[msg_size:]
-
-    # tag
-    while len(data_tag) < payload_size_tag:
-        packet = client_socket.recv(4*1024)
-        if not packet:
-            break
-        data_tag += packet
-    packed_msg_size = data_tag[:payload_size_tag]
-    data_tag = data_tag[payload_size_tag:]
-    msg_size = struct.unpack(">L", packed_msg_size)[0]
-    
-    while len(data_tag) < msg_size:
-        data_tag += client_socket.recv(4*1024)
-    #print(data_tag)
-    
-    frame_data_tag = data_tag[:msg_size]
-    data_tag = data_tag[msg_size:]
 
     # video
     while len(data_video) < payload_size_video:
@@ -111,12 +78,13 @@ while True:
     while len(data_video) < msg_size:
         data_video += client_socket.recv(4*1024)
     #print(data_video)
-    
     frame_data_video = data_video[:msg_size]
     data_video = data_video[msg_size:]
 
-    print(frame_data_iv)
-    print(frame_data_tag)
+    frame_data_iv = frame_data_video[0:12]
+    frame_data_tag = frame_data_video[12:28]
+    frame_data_video = frame_data_video[28:msg_size]
+
     frame_data_video = decrypt(
     frame_data_key,
     b"authenticated but not encrypted payload",
@@ -125,11 +93,10 @@ while True:
     frame_data_tag
     )
 
-    
     frame = pickle.loads(frame_data_video)
     window_name = "Client " + CLIENT_NAME
     cv2.imshow(window_name, frame)
     stop_key = cv2. waitKey(1) & 0xFF
-    if stop_key == ord('q') :
+    if stop_key == 27 :
         break
 client_socket.close()

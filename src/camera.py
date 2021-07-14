@@ -91,19 +91,15 @@ while vid.isOpened():
             frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
             stop_key = cv2.waitKey(1)
             a = pickle.dumps(frame, 0)
-            mess_video = struct.pack(">L", len(a)) + a 
-            
             iv, ciphertext, tag = encrypt(
                                             key,
-                                            mess_video,    
+                                            a,    
                                             b"authenticated but not encrypted payload"
                                         )
-            mess_iv =  struct.pack(">L", len(iv)) + iv 
-            mess_tag = struct.pack(">L", len(tag)) + tag
-            print(iv)
-            print(tag)
-            client_socket.sendall(mess_iv)
-            client_socket.sendall(mess_tag)
+            mess_video = iv + tag +  ciphertext # a or ciphertext
+            mess_video = struct.pack(">L", len(mess_video)) + mess_video
+            #print(iv)
+            #print(tag)
             client_socket.sendall(mess_video)
 
 

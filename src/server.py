@@ -44,7 +44,7 @@ def receive_camera(addr, client_socket, id):
     payload_size_iv = struct.calcsize(">L")
 
     while len(data_key) < payload_size_key:
-        packet = client_socket.recv(4 * 1024)
+        packet = client_socket.recv(32)
         if not packet:
             break
         data_key += packet
@@ -53,44 +53,14 @@ def receive_camera(addr, client_socket, id):
     msg_size = struct.unpack(">L", packed_msg_size)[0]
 
     while len(data_key) < msg_size:
-        data_key += client_socket.recv(4 * 1024)
+        data_key += client_socket.recv(32)
     frame_data_key = data_key[:msg_size]
     data_key = data_key[msg_size:]
     frame_key[id] = frame_data_key
-
+    print(frame_key[id])
 
     while True:
-        # iv
-        while len(data_iv) < payload_size_iv:
-            packet = client_socket.recv(4 * 1024)
-            if not packet:
-                break
-            data_iv += packet
-        packed_msg_size = data_iv[:payload_size_iv]
-        data_iv = data_iv[payload_size_iv:]
-        msg_size = struct.unpack(">L", packed_msg_size)[0]
 
-        while len(data_iv) < msg_size:
-            data_iv += client_socket.recv(4 * 1024)
-        frame_data_iv = data_iv[:msg_size]
-        data_iv = data_iv[msg_size:]
-        frame_iv[id] = frame_data_iv
-        
-        #tag
-        while len(data_tag) < payload_size_tag:
-            packet = client_socket.recv(4 * 1024)
-            if not packet:
-                break
-            data_tag += packet
-        packed_msg_size = data_tag[:payload_size_tag]
-        data_tag = data_tag[payload_size_tag:]
-        msg_size = struct.unpack(">L", packed_msg_size)[0]
-        while len(data_tag) < msg_size:
-            data_tag += client_socket.recv(4 * 1024)
-        frame_data_tag = data_tag[:msg_size]
-        data_tag = data_tag[msg_size:]
-        frame_tag[id] = frame_data_tag
-        
         #frame
         while len(data_video) < payload_size_video:
             packet = client_socket.recv(4 * 1024)
@@ -103,13 +73,14 @@ def receive_camera(addr, client_socket, id):
         while len(data_video) < msg_size:
             data_video += client_socket.recv(4 * 1024)
         frame_data_video = data_video[:msg_size]
+        #print(frame_data_video[0:12])
+        #print(frame_data_video[12:28])
         data_video = data_video[msg_size:]
         frame_video[id] = frame_data_video
 
-
-
         stop_key = cv2.waitKey(1) & 0xFF
         if stop_key == ord('q'):
+            print("break")
             break
     frame_video.pop(id)
     client_socket.close()
@@ -123,18 +94,11 @@ def serve_client (addr, client_socket, id):
         print('CLIENT {} CONNECTED! '.format(addr))
         if client_socket:
             a = frame_key[id]
+            print(a)
             mess_key = struct.pack(">L", len(a)) + a
             client_socket.sendall(mess_key)
 
             while True:
-                a = frame_iv[id]
-                mess_iv = struct.pack(">L", len(a)) + a
-                client_socket.sendall(mess_iv)
-
-                a = frame_tag[id]
-                mess_tag = struct.pack(">L", len(a)) + a
-                client_socket.sendall(mess_tag)
-                
 
                 a = frame_video[id]
                 mess_video = struct.pack(">L", len(a)) + a
