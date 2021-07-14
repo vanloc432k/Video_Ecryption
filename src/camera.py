@@ -37,6 +37,7 @@ while vid.isOpened():
 
             # -- Read & encrypt frame data -- #
             img, frame = vid.read()
+            frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
             serialized_frame = pickle.dumps(frame, 0)
             iv, ciphertext, tag = AESGCM.encrypt(key, serialized_frame, b"authenticated but not encrypted payload")
             encrypted_frame = iv + tag + ciphertext
@@ -44,18 +45,18 @@ while vid.isOpened():
             client_socket.sendall(message)
 
             # -- Render frame for debugging -- #
-            window_name = 'Camera ' + DEVICE_NAME + ' Streaming'
-            cv2.imshow(window_name, frame)
-            key = cv2.waitKey(1) & 0xFF
-            if key == 27:
-                break
+            # window_name = 'Camera ' + DEVICE_NAME + ' Streaming'
+            # cv2.imshow(window_name, frame)
+            # stop_key = cv2.waitKey(1) & 0xFF
+            # if stop_key == 27:
+            #     break
 
     except Exception as e:
         client_socket.close()
         vid.release()
-        cv2.destroyAllWindows()
+        # cv2.destroyAllWindows()
         print('Exception:', str(e))
 
 client_socket.close()
 vid.release()
-cv2.destroyAllWindows()
+# cv2.destroyAllWindows()

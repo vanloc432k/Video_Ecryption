@@ -123,8 +123,8 @@ def receive_camera(camera_socket, camera_name):
 
             frame = pickle.loads(decrypted_frame)
             cv2.imshow(window_name, frame)
-            key = cv2.waitKey(1) & 0xFF
-            if key == 27:
+            stop_key = cv2.waitKey(1) & 0xFF
+            if stop_key == 27:
                 cv2.destroyWindow(window_name)
                 break
 
