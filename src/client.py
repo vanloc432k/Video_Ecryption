@@ -5,6 +5,7 @@ import pickle
 import sys
 import threading
 import numpy as np
+import AESGCM
 
 CLIENT_NAME = sys.argv[1]
 
@@ -78,22 +79,49 @@ def receive_camera(camera_socket, camera_name):
         print('Received data from camera ' + camera_name + '!')
         data = b""
         payload_size = struct.calcsize(">L")
+
+        # -- Get key for the camera data decryption -- #
+        # -- Read key length -- #
+        while len(data) < payload_size:
+            packet = camera_socket.recv(32)
+            if not packet:
+                break
+            data += packet
+        key_msg_size = data[:payload_size]
+        data = data[payload_size:]
+        key_size = struct.unpack(">L", key_msg_size)[0]
+
+        # -- Read key -- #
+        while len(data) < key_size:
+            data += camera_socket.recv(32)
+        key = data[:key_size]
+        data = data[key_size:]
+
         while True:
+            # -- Read a packed message size -- #
             while len(data) < payload_size:
                 packet = camera_socket.recv(4 * 1024)
                 if not packet:
                     break
                 data += packet
+
             packed_msg_size = data[:payload_size]
             data = data[payload_size:]
             msg_size = struct.unpack(">L", packed_msg_size)[0]
 
+            # -- Read a encrypted frame -- #
             while len(data) < msg_size:
                 data += camera_socket.recv(4 * 1024)
-            frame_data = data[:msg_size]
+            encrypted_frame = data[:msg_size]
             data = data[msg_size:]
 
-            frame = pickle.loads(frame_data)
+            frame_iv = encrypted_frame[0:12]
+            frame_tag = encrypted_frame[12:28]
+            frame_data = encrypted_frame[28:msg_size]
+
+            decrypted_frame = AESGCM.decrypt(key, b"authenticated but not encrypted payload", frame_iv, frame_data, frame_tag)
+
+            frame = pickle.loads(decrypted_frame)
             cv2.imshow(window_name, frame)
             key = cv2.waitKey(1) & 0xFF
             if key == 27:
