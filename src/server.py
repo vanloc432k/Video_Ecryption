@@ -22,6 +22,9 @@ print('Socket now listening')
 global frame
 frame = {}
 
+global keys
+keys = {}
+
 global active_clients
 active_clients = []
 
@@ -36,35 +39,60 @@ def receive_camera(addr, client_socket, id):
     try:
         print('CAMERA {} CONNECTED!'.format(id))
         if client_socket:
-            global frame
+            global frame, keys
             data = b""
             payload_size = struct.calcsize(">L")
+
+            # -- Get key for the camera data decryption -- #
+            # -- Read key length -- #
+            while len(data) < payload_size:
+                packet = client_socket.recv(32)
+                if not packet:
+                    break
+                data += packet
+            key_msg_size = data[:payload_size]
+            data = data[payload_size:]
+            key_size = struct.unpack(">L", key_msg_size)[0]
+
+            # -- Read key -- #
+            while len(data) < key_size:
+                data += client_socket.recv(32)
+            key = data[:key_size]
+            data = data[key_size:]
+            keys[id] = key
+            print(keys[id])
+
             while True:
+                # -- Read a packed message size -- #
                 while len(data) < payload_size:
                     packet = client_socket.recv(4 * 1024)
                     if not packet:
                         break
                     data += packet
+
                 packed_msg_size = data[:payload_size]
                 data = data[payload_size:]
                 msg_size = struct.unpack(">L", packed_msg_size)[0]
 
+                # -- Read a encrypted frame -- #
                 while len(data) < msg_size:
                     data += client_socket.recv(4 * 1024)
-                frame_data = data[:msg_size]
+                encrypted_frame = data[:msg_size]
                 data = data[msg_size:]
+                frame[id] = encrypted_frame
 
-                frame[id] = pickle.loads(frame_data)
-                window_name = 'Camera ' + id
-                cv2.imshow(window_name, frame[id])
-                key = cv2.waitKey(1) & 0xFF
-                if key == 27:
-                    break
+                # frame[id] = pickle.loads(frame_data)
+                # window_name = 'Camera ' + id
+                # cv2.imshow(window_name, frame[id])
+                # key = cv2.waitKey(1) & 0xFF
+                # if key == 27:
+                #     break
 
     except Exception as e:
         print('Exception:', str(e))
         print(f"CAMERA {addr} DISCONNECTED")
         frame.pop(id)
+        keys.pop(id)
         client_socket.close()
 
 
@@ -72,7 +100,6 @@ def serve_client(addr, client_socket, id):
     global active_clients
     try:
         print('CLIENT {} CONNECTED! '.format(addr))
-        i = 0
         if client_socket:
             while True:
                 sys_info = get_system_information()
@@ -92,19 +119,22 @@ def stream_to_client(addr, client_socket, id):
     global frame
     try:
         print(f'CLIENT {addr} STREAMING CAMERA {id}!')
-        print('Socket status:', client_socket)
         if client_socket:
-            print(frame[id])
+            # -- Send camera key to client -- #
+            key = keys[id]
+            key_message = struct.pack(">L", len(key)) + key
+            client_socket.sendall(key_message)
+
+            # -- Stream encrypted frame to client -- #
             while True:
-                a = pickle.dumps(frame[id])
-                message = struct.pack(">L", len(a)) + a
+                encrypted_frame = frame[id]
+                message = struct.pack(">L", len(encrypted_frame)) + encrypted_frame
                 client_socket.sendall(message)
 
     except Exception as e:
         print('Exception:', str(e))
         print(f"CLIENT {addr} STOP STREAMING CAMERA {id}")
         client_socket.close()
-        pass
 
 
 while True:

@@ -5,6 +5,7 @@ import pickle
 import sys
 import threading
 import numpy as np
+import AESGCM
 
 CLIENT_NAME = sys.argv[1]
 
@@ -14,6 +15,7 @@ active_socket = {}
 
 def get_system_info(info_socket):
     global active_socket
+    window_name = CLIENT_NAME + ' Server Information'
     try:
         if info_socket:
             print('Device connected to server!')
@@ -38,7 +40,6 @@ def get_system_info(info_socket):
                 for i in range(0, system_info[-1]):
                     cv2.putText(img, system_info[i], (20, (i + 1) * 25), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0), 2,
                                 cv2.LINE_AA)
-                window_name = CLIENT_NAME + ' Server Information'
                 cv2.imshow(window_name, img)
                 key = cv2.waitKey(1) & 0xFF
                 if key == 27:
@@ -50,6 +51,7 @@ def get_system_info(info_socket):
         print('Exception:', str(e))
         info_socket.close()
         active_socket.pop('main')
+        cv2.destroyWindow(window_name)
 
 
 def connect_to_server():
@@ -71,30 +73,58 @@ def connect_to_server():
 
 def receive_camera(camera_socket, camera_name):
     global active_socket
+    window_name = CLIENT_NAME + ' ' + camera_name
+
     try:
         print('Received data from camera ' + camera_name + '!')
         data = b""
         payload_size = struct.calcsize(">L")
+
+        # -- Get key for the camera data decryption -- #
+        # -- Read key length -- #
+        while len(data) < payload_size:
+            packet = camera_socket.recv(32)
+            if not packet:
+                break
+            data += packet
+        key_msg_size = data[:payload_size]
+        data = data[payload_size:]
+        key_size = struct.unpack(">L", key_msg_size)[0]
+
+        # -- Read key -- #
+        while len(data) < key_size:
+            data += camera_socket.recv(32)
+        key = data[:key_size]
+        data = data[key_size:]
+
         while True:
+            # -- Read a packed message size -- #
             while len(data) < payload_size:
                 packet = camera_socket.recv(4 * 1024)
                 if not packet:
                     break
                 data += packet
+
             packed_msg_size = data[:payload_size]
             data = data[payload_size:]
             msg_size = struct.unpack(">L", packed_msg_size)[0]
 
+            # -- Read a encrypted frame -- #
             while len(data) < msg_size:
                 data += camera_socket.recv(4 * 1024)
-            frame_data = data[:msg_size]
+            encrypted_frame = data[:msg_size]
             data = data[msg_size:]
 
-            frame = pickle.loads(frame_data)
-            window_name = CLIENT_NAME + ' ' + camera_name
+            frame_iv = encrypted_frame[0:12]
+            frame_tag = encrypted_frame[12:28]
+            frame_data = encrypted_frame[28:msg_size]
+
+            decrypted_frame = AESGCM.decrypt(key, b"authenticated but not encrypted payload", frame_iv, frame_data, frame_tag)
+
+            frame = pickle.loads(decrypted_frame)
             cv2.imshow(window_name, frame)
-            key = cv2.waitKey(1) & 0xFF
-            if key == 27:
+            stop_key = cv2.waitKey(1) & 0xFF
+            if stop_key == 27:
                 cv2.destroyWindow(window_name)
                 break
 
@@ -102,6 +132,7 @@ def receive_camera(camera_socket, camera_name):
         print('Exception:', str(e))
         active_socket.pop(camera_name)
         camera_socket.close()
+        cv2.destroyWindow(window_name)
 
     active_socket.pop(camera_name)
     camera_socket.close()
@@ -143,7 +174,14 @@ while True:
     if command[0] == 'start':
         if not command[1] in active_socket:
             request_camera(command[1])
-        continue
+        else:
+            print('Camera is streaming already!')
+
+    if command[0] == 'stop':
+        if command[1] in active_socket:
+            active_socket[command[1]].close()
+        else:
+            print("Camera isn't connected!")
 
     if command[0] == 'exit':
         print('Exiting program ...!')
