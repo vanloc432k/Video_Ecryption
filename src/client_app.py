@@ -11,6 +11,10 @@ import cv2
 from functools import partial
 
 CLIENT_NAME = sys.argv[1]
+global HOST_IP
+global PORT
+HOST_IP = '127.0.0.1'
+PORT = 8000
 
 global active_socket
 active_socket = {}
@@ -106,6 +110,8 @@ def receive_camera(camera_socket, camera_name):
 
 
 def request_camera(camera_name):
+    global HOST_IP
+    global PORT
     global active_socket
     global streaming_socket
     global system_info
@@ -119,10 +125,8 @@ def request_camera(camera_name):
         if streaming_socket is not None:
             active_socket[streaming_socket].close()
         new_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        host_ip = '127.0.0.1'
-        port = 8000
         try:
-            new_socket.connect((host_ip, port))
+            new_socket.connect((HOST_IP, PORT))
             identity = 'CLIENT-' + CLIENT_NAME + '-' + camera_name
             new_socket.send(identity.encode('utf-8'))
             new_thread = threading.Thread(target=receive_camera, args=(new_socket, camera_name), daemon=True)
@@ -197,6 +201,8 @@ def reload():
 
 
 def connect_to_server():
+    global HOST_IP
+    global PORT
     global active_socket
     global window
     global current_frame
@@ -206,10 +212,8 @@ def connect_to_server():
         return
 
     main_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    host_ip = '127.0.0.1'  # Server IP
-    port = 8000
     try:
-        main_socket.connect((host_ip, port))
+        main_socket.connect((HOST_IP, PORT))
         identity = 'CLIENT-' + CLIENT_NAME
         main_socket.send(identity.encode('utf-8'))
         new_thread = threading.Thread(target=get_system_info, args=(main_socket,), daemon=True)
