@@ -80,6 +80,7 @@ print(frame_data_key)
 OK = b'OK'
 mess_OK = struct.pack(">L", len(OK)) + OK
 client_socket.sendall(mess_OK)
+cv2.waitKey(5000)
 while True:
     # video
     while len(data_video) < payload_size_video:
