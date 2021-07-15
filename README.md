@@ -16,7 +16,7 @@ git clone https://github.com/vanloc432k/Video_Ecryption
 Create a virtual environment
 
 ```
-.path\to\project\Scripts\venv .venv
+py -m venv venv
 ```
 
 Activate project's venv
