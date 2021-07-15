@@ -1,1 +1,1 @@
-python camera.py camera 0
+python camera.py camera 1

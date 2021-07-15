@@ -79,16 +79,45 @@ def decrypt(key, associated_data, iv, ciphertext, tag):
     # Decryption gets us the authenticated plaintext.
     # If the tag does not match an InvalidTag exception will be raised.
     return decryptor.update(ciphertext) + decryptor.finalize()
-
-key = gen()
+def encrypt_RSA(pk, plaintext):
+    # Unpack the key into it's components
+    key, n = pk
+    # Convert each letter in the plaintext to numbers based on the character using a^b mod m
+    cipher = [pow(ord(char), key, n) for char in plaintext]
+    # Return the array of bytes
+    return cipher
+    
+data_key = b""
+payload_size_key = struct.calcsize(">L")
+while len(data_key) < payload_size_key:
+    packet = client_socket.recv(32)
+    if not packet:
+        break
+    data_key += packet
+packed_msg_size = data_key[:payload_size_key]
+data_key = data_key[payload_size_key:]
+msg_size = struct.unpack(">L", packed_msg_size)[0]
+    
+while len(data_key) < msg_size:
+    data_key += client_socket.recv(32)
+    
+public= data_key[:msg_size]
+data_key = data_key[msg_size:]
+public = pickle.loads(public)
+#print(public)
+key = str(gen())
 print(key)
+key = encrypt_RSA(public, key)
+#print(key)
+key = pickle.dumps(key)
 mess_key = struct.pack(">L", len(key)) + key
 client_socket.sendall(mess_key)
+print("send_key done")
 while vid.isOpened():
     try:
         if client_socket:
             img, frame = vid.read()
-            frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+            #frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
             stop_key = cv2.waitKey(1)
             a = pickle.dumps(frame, 0)
             iv, ciphertext, tag = encrypt(
