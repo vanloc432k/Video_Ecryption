@@ -1,38 +1,62 @@
 import cv2
-#import matplotlib.pyplot as plt
 import socket
+import struct
+import pickle
+import sys
+import AESGCM
 
-host = '0.0.0.0'
-port = 4000
+# -- Set DEVICE NAME by command line -- #
+DEVICE_NAME = sys.argv[1]
 
-cam = cv2.VideoCapture(0)
+# -- Initialize socket and connect to server -- #
+client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+HOST_IP = '127.0.0.1'
+PORT = 8000
+client_socket.connect((HOST_IP, PORT))
 
-while(True):
-    ret, f = cam.read()
+# -- Send device's identity & encryption key -- #
+identity = 'CAMERA-' + DEVICE_NAME
+client_socket.send(identity.encode('utf-8'))
 
-    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    s.bind((host, port))
+# -- Get camera source -- #
+camera = sys.argv[2]
+if camera == '0':
+    vid = cv2.VideoCapture(0)
+elif camera == '1':
+    vid = cv2.VideoCapture('video/beauty.mp4')
 
-    s.listen(1)  # 1 ở đây có nghĩa chỉ chấp nhận 1 kết nối
-    print("Server listening on port", port)
+# -- Send encryption key -- #
+key = AESGCM.gen()
+key_message = struct.pack(">L", len(key)) + key
+client_socket.sendall(key_message)
 
-    c, addr = s.accept()
-    print("Connect from ", str(addr))
+# -- Streaming loop -- #
+while vid.isOpened():
+    try:
+        if client_socket:
 
-    if ret == True:
-        pic = cv2.cvtColor(f, 1)
+            # -- Read & encrypt frame data -- #
+            img, frame = vid.read()
+            frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+            serialized_frame = pickle.dumps(frame, 0)
+            iv, ciphertext, tag = AESGCM.encrypt(key, serialized_frame, b"authenticated but not encrypted payload")
+            encrypted_frame = iv + tag + ciphertext
+            message = struct.pack(">L", len(encrypted_frame)) + encrypted_frame
+            client_socket.sendall(message)
 
-        img = cv2.resize(f, (0,0), fx=0.5, fy=0.5)
-        cv2.imwrite('temp.png', img)
-        c.send(pic)
-        cv2.imshow('Camera', pic)
-        # cv2.imshow('Camera', f)
-    else:
-        break
-    k = cv2.waitKey(1)
-    if(k == 113):
-        c.close()
-        break
+            # -- Render frame for debugging -- #
+            # window_name = 'Camera ' + DEVICE_NAME + ' Streaming'
+            # cv2.imshow(window_name, frame)
+            # stop_key = cv2.waitKey(1) & 0xFF
+            # if stop_key == 27:
+            #     break
 
-cam.release()
-cv2.destroyAllWindows()
+    except Exception as e:
+        client_socket.close()
+        vid.release()
+        # cv2.destroyAllWindows()
+        print('Exception:', str(e))
+
+client_socket.close()
+vid.release()
+# cv2.destroyAllWindows()
