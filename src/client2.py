@@ -24,12 +24,12 @@ global xb
 global yb
 global solver   #biến lưu after ( trong quá trình update canvas)
 global lb1
-global bt
+global buttons
 global system_info
 
 
 solver = None
-bt = []
+buttons = []
 system_info = []
 
 #tọa độ button camera đầu tiên
@@ -329,7 +329,7 @@ class MainWindow():
 
 def get_system_info(info_socket):
     global active_socket
-    global bt
+    global buttons
     global system_info
 
     window_name = CLIENT_NAME + ' Server Information'
@@ -363,7 +363,7 @@ def get_system_info(info_socket):
 def reload():
     global window
     global system_info
-    global bt
+    global buttons
 
     if len(bt) > 0:
         for b in bt: b.destroy()

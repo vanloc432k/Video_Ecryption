@@ -127,6 +127,8 @@ def stream_to_client(addr, client_socket, id):
 
             # -- Stream encrypted frame to client -- #
             while True:
+                if not(id in frame):
+                    break
                 encrypted_frame = frame[id]
                 message = struct.pack(">L", len(encrypted_frame)) + encrypted_frame
                 client_socket.sendall(message)
@@ -136,6 +138,7 @@ def stream_to_client(addr, client_socket, id):
         print(f"CLIENT {addr} STOP STREAMING CAMERA {id}")
         client_socket.close()
 
+    client_socket.close()
 
 while True:
     print("TOTAL CONNECTIONS:", threading.activeCount() - 1)
