@@ -26,6 +26,8 @@ global solver   #biến lưu after ( trong quá trình update canvas)
 global lb1
 global bt
 global system_info
+global current_frame
+global canvas_image
 
 # CLIENT_NAME = sys.argv[1]
 
@@ -35,6 +37,7 @@ global system_info
 solver = None
 bt = []
 system_info = []
+# current_frame = np.zeros((400, 500, 3), np.float32)
 
 #tọa độ button camera đầu tiên
 xb = 30
@@ -76,10 +79,12 @@ class MainWindow():         # xử lý nhấn mỗi button Camera
         # Repeat every 'interval' ms
         solver = self.canvas.after(self.interval, self.update_image)
 
+
 def receive_camera(camera_socket, camera_name):
     global active_socket
     global canvas
     global solver
+    global current_frame
 
     # window_name = CLIENT_NAME + ' ' + camera_name
 
@@ -132,21 +137,17 @@ def receive_camera(camera_socket, camera_name):
             frame = pickle.loads(decrypted_frame)
             # _, frame = cv2.VideoCapture(0).read()
             frame = cv2.resize(frame, (500, 400))
-            image = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)  # to RGB
-            image = Image.fromarray(image)  # to PIL format
-            image = ImageTk.PhotoImage(image)  # to ImageTk format
-
+            # image = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)  # to RGB
+            # image = Image.fromarray(image)  # to PIL format
+            # image = ImageTk.PhotoImage(image)  # to ImageTk format
+            current_frame = frame
+            # image_frame.imgtk = image
+            # image_frame.config(image=image)
             # Update image
-            canvas.create_image(0, 0, anchor=tk.NW, image=image)
+            # canvas.create_image(0, 0, anchor=tk.NW, image=image)
 
             # Repeat every 'interval' ms
             # solver = canvas.after(20, update_image)
-
-            # cv2.imshow(window_name, frame)
-            # stop_key = cv2.waitKey(1) & 0xFF
-            # if stop_key == 27:
-            #     cv2.destroyWindow(window_name)
-            #     break
 
     except Exception as e:
         print('Exception:', str(e))
@@ -251,6 +252,8 @@ def reload():
 def connect_to_server():
     global active_socket
     global window
+    global canvas
+    global current_frame
 
     main_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     host_ip = '127.0.0.1'  # Server IP
@@ -268,6 +271,20 @@ def connect_to_server():
     except Exception as e:
         print('Exception:', str(e))
         print("Can't connect to server :(")
+
+def update_canvas():
+    global current_frame
+
+    # frame = cv2.resize(current_frame, (500, 400))
+    # image = cv2.cvtColor(current_frame, cv2.COLOR_BGR2RGB)  # to RGB
+    image = Image.fromarray(current_frame)  # to PIL format
+    image = ImageTk.PhotoImage(image)  # to ImageTk format
+    # cv2.imshow('Test', current_frame)
+    image_frame.imgtk = image
+    image_frame.config(image=image)
+
+    image_frame.after(10, update_canvas)
+
 
 def begin():         #event click "Kết nối"
     global xb
@@ -289,8 +306,13 @@ if __name__ == "__main__":
     window.geometry("900x500+500+300")
 
     #tạo canvas
-    canvas = tk.Canvas(window, bg="blue", width=500, height=400)
-    canvas.place(x = 325, y = 80)
+    # canvas = tk.Canvas(window, bg="blue", width=500, height=400)
+    # canvas.place(x=325, y=80)
+
+    current_frame = np.zeros((400, 500), np.float32)
+    image_frame = tk.Label(window, bg="blue", width=500, height=400)
+    image_frame.pack(padx=10, pady=10)
+    image_frame.place(x=325, y=80)
 
     lb1 = tk.Label(window, text="Danh sách camera: ", font=("", 18))
     lb1.place(x = 15, y = 50)
@@ -300,4 +322,6 @@ if __name__ == "__main__":
     bt_disconnect = tk.Button(window, text="Ngắt kết nối", command=end)
     bt_disconnect.place(x = 500, y = 10)
 
+    update_canvas()
     window.mainloop()
+

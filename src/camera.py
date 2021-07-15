@@ -23,7 +23,7 @@ camera = sys.argv[2]
 if camera == '0':
     vid = cv2.VideoCapture(0)
 elif camera == '1':
-    vid = cv2.VideoCapture('video/about.mp4')
+    vid = cv2.VideoCapture('video/beauty.mp4')
 
 # -- Send encryption key -- #
 key = AESGCM.gen()
