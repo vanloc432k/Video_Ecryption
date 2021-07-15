@@ -18,10 +18,7 @@ active_socket = {}
 global streaming_socket
 streaming_socket = None
 
-global window   #cửa sổ chương trình
-global xb
-global yb
-global lb1
+global window
 global buttons
 global system_info
 global current_frame
@@ -29,12 +26,10 @@ global current_frame
 buttons = []
 system_info = []
 
-#tọa độ button camera đầu tiên
-xb = 30
-yb = 100
 
 def do_nothing():
     pass
+
 
 def popupError(s):
     popupRoot = tk.Tk()
@@ -98,7 +93,7 @@ def receive_camera(camera_socket, camera_name):
             decrypted_frame = AESGCM.decrypt(key, b"authenticated but not encrypted payload", frame_iv, frame_data, frame_tag)
 
             frame = pickle.loads(decrypted_frame)
-            frame = cv2.resize(frame, (500, 400))
+            # frame = cv2.resize(frame, (768, 432))
             current_frame = frame
 
     except Exception as e:
@@ -197,8 +192,8 @@ def reload():
         print(system_info[-1])
         for i in range(0, system_info[-1]):
             camera_name = system_info[i]
-            buttons.append(tk.Button(window, text=camera_name, command=partial(request_camera, camera_name)))
-            buttons[i].place(x=xb, y=yb + i * 30)
+            buttons.append(tk.Button(window, height=1, width=20, text=camera_name, command=partial(request_camera, camera_name)))
+            buttons[i].place(x=20 + int(i / 10)*30, y=120 + int(i % 10)*30)
 
 
 def connect_to_server():
@@ -242,12 +237,21 @@ def disconnect_from_server():  # event click "Ngắt kết nối"
 def update_image():
     global current_frame
 
+    bounding_width = image_frame['width']
+    bounding_height = image_frame['height']
+    resize_ratio = 1
+    if current_frame.shape[1]/current_frame.shape[0] > bounding_width/bounding_height:
+        resize_ratio = bounding_width/current_frame.shape[1]
+    else:
+        resize_ratio = bounding_height/current_frame.shape[0]
+    frame = cv2.resize(current_frame, (int(current_frame.shape[1]*resize_ratio), int(current_frame.shape[0]*resize_ratio)))
+
     # -- Color Image -- #
-    # image = cv2.cvtColor(current_frame, cv2.COLOR_BGR2RGB)
+    # image = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
     # image = Image.fromarray(image, "RGB")
 
     # -- Gray Image -- #
-    image = Image.fromarray(current_frame)
+    image = Image.fromarray(frame)
 
     image = ImageTk.PhotoImage(image)
     image_frame.imgtk = image
@@ -259,21 +263,21 @@ def update_image():
 if __name__ == "__main__":
     window = tk.Tk()
     window.title("Client " + CLIENT_NAME)
-    window.geometry("900x500+500+300")
+    window.geometry("1280x720+300+200")
 
-    current_frame = np.zeros((400, 500), np.float32)
-    image_frame = tk.Label(window, bg="black", width=500, height=400)
-    image_frame.place(x=325, y=80)
+    bt_connect = tk.Button(window, text="Kết nối", activebackground="blue", bg="blue", fg="white", height=2, width=20, command=connect_to_server)
+    bt_connect.place(x=20, y=8)
+    bt_disconnect = tk.Button(window, text="Ngắt kết nối", activebackground="red", bg="red", fg="white", height=2, width=20, command=disconnect_from_server)
+    bt_disconnect.place(x=1120, y=8)
+
+    current_frame = np.zeros((450, 800), np.float32)
+    image_frame = tk.Label(window, bg="black", width=800, height=450)
+    image_frame.place(x=400, y=120)
 
     lb1 = tk.Label(window, text="Danh sách camera: ", font=("", 18))
-    lb1.place(x=15, y=50)
+    lb1.place(x=20, y=60)
 
-    bt_connect = tk.Button(window, text="Kết nối", height=2, width=20, command=connect_to_server)
-    bt_connect.place(x=150, y=10)
-    bt_disconnect = tk.Button(window, text="Ngắt kết nối", height=2, width=20, command=disconnect_from_server)
-    bt_disconnect.place(x=500, y=10)
-
-    tk.Button(window, text="Cập nhật camera", command=reload).place(x=230, y=50)
+    bt_reload = tk.Button(window, text="Cập nhật camera", height=1, width=15, command=reload).place(x=250, y=65)
 
     update_image()
 
