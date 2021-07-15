@@ -80,7 +80,7 @@ print(frame_data_key)
 OK = b'OK'
 mess_OK = struct.pack(">L", len(OK)) + OK
 client_socket.sendall(mess_OK)
-cv2.waitKey(5000)
+
 while True:
     # video
     while len(data_video) < payload_size_video:
@@ -101,7 +101,8 @@ while True:
     frame_data_iv = frame_data_video[0:12]
     frame_data_tag = frame_data_video[12:28]
     frame_data_video = frame_data_video[28:msg_size]
-
+    print(frame_data_key)
+    print(frame_data_tag)
     frame_data_video = decrypt(
     frame_data_key,
     b"authenticated but not encrypted payload",

@@ -46,8 +46,16 @@ frame_key = {}
 frame_iv = {}
 list_accept_ip = []
 def receive_camera(addr, client_socket, id):
+    
+    global frame
+    global data_video
     data_video = b""
+    global data_key 
     data_key = b""
+    
+    payload_size_key = struct.calcsize(">L")
+    payload_size_video = struct.calcsize(">L")
+
 
     payload_size_key = struct.calcsize(">L")
     payload_size_video = struct.calcsize(">L")
@@ -70,7 +78,7 @@ def receive_camera(addr, client_socket, id):
     frame_data_key = data_key[:msg_size]
     data_key = data_key[msg_size:]
     frame_key[id] = frame_data_key
-    #print(frame_key[id])
+    print("i got key :)")
 
     while True:
 

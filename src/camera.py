@@ -18,7 +18,7 @@ camera = sys.argv[2]
 if camera == '0':
     vid = cv2.VideoCapture(0)
 elif camera == '1':
-    vid = cv2.VideoCapture('video/about.mp4')
+    vid = cv2.VideoCapture('video/kemtron.mp4')
 img_counter = 0
 
 import os
@@ -105,6 +105,8 @@ public= data_key[:msg_size]
 data_key = data_key[msg_size:]
 public = pickle.loads(public)
 #print(public)
+
+key_AES_GCM = gen()
 key = str(gen())
 print(key)
 key = encrypt_RSA(public, key)
@@ -121,14 +123,14 @@ while vid.isOpened():
             stop_key = cv2.waitKey(1)
             a = pickle.dumps(frame, 0)
             iv, ciphertext, tag = encrypt(
-                                            key,
+                                            key_AES_GCM,
                                             a,    
                                             b"authenticated but not encrypted payload"
                                         )
             mess_video = iv + tag +  ciphertext # a or ciphertext
             mess_video = struct.pack(">L", len(mess_video)) + mess_video
-            #print(iv)
-            #print(tag)
+            print(iv)
+            print(tag)
             client_socket.sendall(mess_video)
 
 
