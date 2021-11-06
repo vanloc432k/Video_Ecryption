@@ -25,6 +25,12 @@ Activate project's venv
 .path\to\project\Scripts\activate
 ```
 
+Upgrade pip
+
+```
+python -m pip install --upgrade pip
+```
+
 Installing required packages
 
 ```
